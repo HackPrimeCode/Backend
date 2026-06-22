@@ -1,0 +1,69 @@
+from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from src.enums import GlobalRole, HackathonStatus
+
+
+class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    name: str
+    tech_stack: list[Any] | None = None
+    global_role: GlobalRole
+
+
+class HackathonCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    submission_requirements: list[Any] = Field(default_factory=list)
+    evaluation_criteria: list[Any] = Field(default_factory=list)
+
+
+class HackathonUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    submission_requirements: list[Any] | None = None
+    evaluation_criteria: list[Any] | None = None
+
+
+class HackathonStatusUpdate(BaseModel):
+    status: HackathonStatus
+
+
+class HackathonRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    description: str | None = None
+    status: HackathonStatus
+    submission_requirements: list[Any] | None = None
+    evaluation_criteria: list[Any] | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    tz_file_url: str | None = None
+
+
+class HackathonPublicRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    description: str | None = None
+    status: HackathonStatus
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    tz_file_url: str | None = None
+
+
+class HackathonDetailRead(HackathonPublicRead):
+    submission_requirements: list[Any] | None = None
+    evaluation_criteria: list[Any] | None = None
