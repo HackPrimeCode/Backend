@@ -1,3 +1,4 @@
+import logging
 import uuid
 from pathlib import PurePath
 
@@ -6,6 +7,8 @@ from botocore.exceptions import ClientError
 from fastapi import UploadFile
 
 from src.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_TZ_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt", ".md"}
 MAX_TZ_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
@@ -24,9 +27,15 @@ class S3Storage:
 
     def ensure_bucket(self) -> None:
         try:
-            self.client.head_bucket(Bucket=self.bucket)
-        except ClientError:
-            self.client.create_bucket(Bucket=self.bucket)
+            try:
+                self.client.head_bucket(Bucket=self.bucket)
+            except ClientError:
+                self.client.create_bucket(Bucket=self.bucket)
+        except Exception as exc:
+            logger.warning(
+                "S3 unavailable at startup, file uploads will fail until it is running: %s",
+                exc,
+            )
 
     def upload_hackathon_tz(self, hackathon_id: int, file: UploadFile) -> str:
         extension = PurePath(file.filename or "").suffix.lower()
