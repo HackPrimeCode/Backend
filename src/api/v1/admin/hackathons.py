@@ -8,6 +8,8 @@ from src.api.deps import AdminOrOrganizator, DbSession
 from src.core.storage import s3_storage
 from src.enums import HackathonStatus
 from src.models.hackathon import Hackathon
+from src.models.topics import Topic
+from src.models.prizes import HackathonPrize
 from src.schemas.hackathon import HackathonRead, HackathonStatusUpdate, HackathonUpdate
 
 router = APIRouter(prefix="/admin/hackathons", tags=["admin-hackathons"])
@@ -49,33 +51,67 @@ def create_hackathon(
     _: AdminOrOrganizator,
     title: Annotated[str, Form()],
     description: Annotated[str | None, Form()] = None,
+    topics: Annotated[str | None, Form()] = None,
+    technologies: Annotated[str | None, Form()] = None,
+    prizes: Annotated[str | None, Form()] = None,
     start_date: Annotated[str | None, Form()] = None,
     end_date: Annotated[str | None, Form()] = None,
     submission_requirements: Annotated[str | None, Form()] = None,
     evaluation_criteria: Annotated[str | None, Form()] = None,
     tz_file: Annotated[UploadFile | None, File()] = None,
 ) -> Hackathon:
+
+    topics_data = _parse_json_list(topics, "topics")
+    prizes_data = _parse_json_list(prizes, "prizes")
+
     hackathon = Hackathon(
         title=title,
         description=description,
+        technologies=_parse_json_list(technologies, "technologies"),
         start_date=_parse_optional_datetime(start_date),
         end_date=_parse_optional_datetime(end_date),
         submission_requirements=_parse_json_list(submission_requirements, "submission_requirements"),
         evaluation_criteria=_parse_json_list(evaluation_criteria, "evaluation_criteria"),
         status=HackathonStatus.DRAFT,
     )
+
+
+    for topic in topics_data:
+        hackathon.topics.append(
+            Topic(
+                name=topic["name"],
+                description=topic.get("description"),
+            )
+        )
+
+
+    for prize in prizes_data:
+        hackathon.prizes.append(
+            HackathonPrize(
+                place=prize["place"],
+                title=prize["title"],
+                reward=prize["reward"],
+            )
+        )
+
     db.add(hackathon)
     db.flush()
 
     if tz_file is not None and tz_file.filename:
         try:
-            hackathon.tz_file_url = s3_storage.upload_hackathon_tz(hackathon.id, tz_file)
+            hackathon.tz_file_url = s3_storage.upload_hackathon_tz(
+                hackathon.id, tz_file
+            )
         except ValueError as exc:
             db.rollback()
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
 
     db.commit()
     db.refresh(hackathon)
+
     return hackathon
 
 

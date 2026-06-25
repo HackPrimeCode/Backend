@@ -4,6 +4,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from src.enums import GlobalRole, HackathonStatus
+from src.schemas.prizes import PrizeCreate, PrizeResponse
+from src.schemas.topic import TopicCreate, TopicResponse
 
 
 class UserRead(BaseModel):
@@ -21,6 +23,9 @@ class HackathonCreate(BaseModel):
     description: str | None = None
     start_date: datetime | None = None
     end_date: datetime | None = None
+    prizes: list[PrizeCreate] = Field(default_factory=list)
+    technologies: list[Any] = Field(default_factory=list)
+    topics: list[TopicCreate] = Field(default_factory=list)
     submission_requirements: list[Any] = Field(default_factory=list)
     evaluation_criteria: list[Any] = Field(default_factory=list)
 
@@ -45,6 +50,9 @@ class HackathonRead(BaseModel):
     title: str
     description: str | None = None
     status: HackathonStatus
+    prizes: list[PrizeResponse] | None = None
+    topics: list[TopicResponse] | None = None
+    technologies: list[Any] | None = None
     submission_requirements: list[Any] | None = None
     evaluation_criteria: list[Any] | None = None
     start_date: datetime | None = None
@@ -65,5 +73,8 @@ class HackathonPublicRead(BaseModel):
 
 
 class HackathonDetailRead(HackathonPublicRead):
+    prizes: list[PrizeResponse] | None = None
+    topics: list[TopicResponse] | None = None
+    technologies: list[Any] | None = None
     submission_requirements: list[Any] | None = None
     evaluation_criteria: list[Any] | None = None
