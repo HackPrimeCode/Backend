@@ -21,11 +21,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 hack_place_enum = postgresql.ENUM(
-    "Онлайн",
-    "Москва",
-    "Санкт-Петербург",
-    "Казань",
-    "Нижний Новгород",
+    "ONLINE",
+    "MOSCOW",
+    "SPB",
+    "KAZAN",
+    "NOVGOROD",
     name="hack_place_enum",
 )
 
