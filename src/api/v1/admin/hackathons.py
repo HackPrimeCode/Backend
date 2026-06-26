@@ -6,9 +6,8 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
 from src.api.deps import AdminOrOrganizator, DbSession
 from src.core.storage import s3_storage
-from src.enums import HackathonStatus
+from src.enums import HackathonStatus, HackPlace
 from src.models.hackathon import Hackathon
-from src.models.topics import Topic
 from src.models.prizes import HackathonPrize
 from src.schemas.hackathon import HackathonRead, HackathonStatusUpdate, HackathonUpdate
 
@@ -52,8 +51,11 @@ def create_hackathon(
     title: Annotated[str, Form()],
     description: Annotated[str | None, Form()] = None,
     topics: Annotated[str | None, Form()] = None,
-    technologies: Annotated[str | None, Form()] = None,
     prizes: Annotated[str | None, Form()] = None,
+    place: Annotated[HackPlace, Form()] = HackPlace.ONLINE,
+    min_team_size: Annotated[int, Form()] = None,
+    max_team_size: Annotated[int, Form()] = None,
+    max_participants: Annotated[int, Form()] = None,
     start_date: Annotated[str | None, Form()] = None,
     end_date: Annotated[str | None, Form()] = None,
     submission_requirements: Annotated[str | None, Form()] = None,
@@ -61,13 +63,16 @@ def create_hackathon(
     tz_file: Annotated[UploadFile | None, File()] = None,
 ) -> Hackathon:
 
-    topics_data = _parse_json_list(topics, "topics")
     prizes_data = _parse_json_list(prizes, "prizes")
 
     hackathon = Hackathon(
         title=title,
         description=description,
-        technologies=_parse_json_list(technologies, "technologies"),
+        topics=_parse_json_list(topics, "topics"),
+        min_team_size=min_team_size,
+        max_team_size=max_team_size,
+        max_participants=max_participants,
+        place = place,
         start_date=_parse_optional_datetime(start_date),
         end_date=_parse_optional_datetime(end_date),
         submission_requirements=_parse_json_list(submission_requirements, "submission_requirements"),
@@ -76,19 +81,9 @@ def create_hackathon(
     )
 
 
-    for topic in topics_data:
-        hackathon.topics.append(
-            Topic(
-                name=topic["name"],
-                description=topic.get("description"),
-            )
-        )
-
-
     for prize in prizes_data:
         hackathon.prizes.append(
             HackathonPrize(
-                place=prize["place"],
                 title=prize["title"],
                 reward=prize["reward"],
             )

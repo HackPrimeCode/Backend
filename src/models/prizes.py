@@ -10,7 +10,6 @@ class HackathonPrize(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     hackathon_id: Mapped[int] = mapped_column(ForeignKey("hackathons.id", ondelete="CASCADE"))
     
-    place: Mapped[int] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String(255))
     reward: Mapped[str] = mapped_column(String(255))
 

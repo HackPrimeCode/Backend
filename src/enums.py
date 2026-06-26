@@ -6,6 +6,13 @@ class GlobalRole(str, enum.Enum):
     USER = "user"
     ORGANIZATOR = "organizator"
 
+class HackPlace(str, enum.Enum):
+    MOSCOW = "Москва"
+    SPB = "Санкт-Петербург"
+    KAZAN = "Казань"
+    NOVGOROD = "Нижний-Новгород"
+    ONLINE = "Онлайн"
+
 
 class HackathonStatus(str, enum.Enum):
     DRAFT = "DRAFT"

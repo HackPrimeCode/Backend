@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import Base
-from src.enums import HackathonStatus
+from src.enums import HackathonStatus, HackPlace
 from src.models.enums import enum_values
 
 
@@ -24,12 +24,18 @@ class Hackathon(Base):
         ),
         default=HackathonStatus.DRAFT,
     )
-    topics: Mapped[list["Topic"]] = relationship(
-    back_populates="hackathon",
-    cascade="all, delete-orphan"
-)
-
-    technologies: Mapped[list[str] | None] = mapped_column(JSONB, default=list)
+    place: Mapped[HackPlace] = mapped_column(
+        Enum(
+            HackPlace,
+            name="hack_place_enum",
+            native_enum=True,
+        ),
+        default=HackPlace.ONLINE,
+    )
+    min_team_size: Mapped[int] = mapped_column(default=1)
+    max_team_size: Mapped[int] = mapped_column(default=4)
+    max_participants: Mapped[int] = mapped_column(default=None)
+    topics: Mapped[list[str] | None] = mapped_column(JSONB, default=list)
     submission_requirements: Mapped[list | None] = mapped_column(JSONB, default=list)
     evaluation_criteria: Mapped[list | None] = mapped_column(JSONB, default=list)
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
