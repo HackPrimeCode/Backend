@@ -26,7 +26,6 @@ jobs:
 
       - name: Health check
         run: |
-          cd Backend
           uvicorn src.main:app --host 0.0.0.0 --port 8000 &
           sleep 5
           curl -f http://localhost:8000/health
