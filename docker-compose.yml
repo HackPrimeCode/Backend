@@ -17,6 +17,13 @@ services:
       retries: 5
 
 
+  adminer:
+    image: adminer
+    container_name: hackprime_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
   mailhog:
     image: mailhog/mailhog
     container_name: hackprime_mailhog

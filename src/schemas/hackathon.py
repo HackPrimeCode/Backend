@@ -75,6 +75,7 @@ class HackathonPublicRead(BaseModel):
     description: str | None = None
     status: HackathonStatus
     place: HackPlace
+    
     prizes: list[PrizeResponse] | None = None
     topics: list[Any] | None = None
     min_team_size: int | None = None

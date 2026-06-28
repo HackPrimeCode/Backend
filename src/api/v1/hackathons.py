@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 from sqlalchemy import select
 
-from src.api.deps import DbSession
+from src.api.deps import DbSession, AdminOrOrganizator
 from src.enums import HackathonStatus
 from src.models.hackathon import Hackathon
 from src.schemas.hackathon import HackathonDetailRead, HackathonPublicRead
+from src.schemas.auth import InviteJudgesRequest, InviteJudgesResponse
 
 router = APIRouter(prefix="/hackathons", tags=["hackathons"])
 

@@ -1,15 +1,22 @@
 import json
+import uuid
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status, BackgroundTasks
+
+from src.enums import InviteTargetRole
 
 from src.api.deps import AdminOrOrganizator, DbSession
 from src.core.storage import s3_storage
 from src.enums import HackathonStatus, HackPlace
+from src.services.email_service import send_invite_email
 from src.models.hackathon import Hackathon
 from src.models.prizes import HackathonPrize
+from src.models.invite_token import InviteToken
 from src.schemas.hackathon import HackathonRead, HackathonStatusUpdate, HackathonUpdate
+from src.schemas.auth import InviteJudgesRequest, InviteJudgesResponse
+
 
 router = APIRouter(prefix="/admin/hackathons", tags=["admin-hackathons"])
 
@@ -151,3 +158,50 @@ def update_hackathon_status(
     db.commit()
     db.refresh(hackathon)
     return hackathon
+
+@router.post("/{hackathon_id}/invite-judges",response_model=InviteJudgesResponse)
+def invite_judges(
+    hackathon_id: int,
+    payload: InviteJudgesRequest,
+    db: DbSession,
+    _: AdminOrOrganizator,
+    background_tasks: BackgroundTasks,
+):
+    hackathon = db.get(Hackathon, hackathon_id)
+    if hackathon is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Hackathon not found",
+        )
+
+    created_tokens = []
+
+    for email in payload.emails:
+        email_lower = email.lower()
+
+        token = InviteToken(
+            token=uuid.uuid4(),
+            email=email_lower,
+            hackathon_id=hackathon_id,
+            target_team_id=None,
+            target_role=InviteTargetRole.JUDGE,
+            is_used=False,
+        )
+
+        db.add(token)
+        db.flush()
+
+        created_tokens.append(str(token.token))
+
+    db.commit()
+
+    for token_str, email in zip(created_tokens, payload.emails):
+        background_tasks.add_task(
+            send_invite_email,
+            email,
+            token_str,
+            hackathon.title,
+            "жюри",
+        )
+
+    return InviteJudgesResponse(created_invites=created_tokens)

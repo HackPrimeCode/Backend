@@ -45,3 +45,10 @@ class PendingInvite(BaseModel):
 class InviteExchangeResponse(BaseModel):
     access_token: str
     pending_invite: PendingInvite
+
+class InviteJudgesRequest(BaseModel):
+    emails: list[EmailStr]
+
+
+class InviteJudgesResponse(BaseModel):
+    created_invites: list[str]
