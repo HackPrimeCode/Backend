@@ -16,7 +16,17 @@ from src.core.security import (
 )
 from src.enums import GlobalRole
 from src.models.user import User
-from src.schemas.auth import AuthResponse, TokenResponse, UserLogin, UserRead, UserRegister
+from src.models.team import Team
+from src.models.invite_token import InviteToken
+from src.schemas.auth import (
+    AuthResponse,
+    TokenResponse,
+    UserLogin,
+    UserRead,
+    UserRegister,
+    InviteExchangeRequest,
+    InviteExchangeResponse,
+    PendingInvite)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -114,6 +124,51 @@ def refresh_session(
         )
 
     return _issue_auth_response(user, response)
+
+@router.post("/exchange", response_model=InviteExchangeResponse)
+def exchange_invite_token(
+    payload: InviteExchangeRequest,
+    db: DbSession,
+):
+    invite = db.scalar(
+        select(InviteToken).where(InviteToken.token == payload.token)
+    )
+
+    if invite is None or invite.is_used:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or already used token",
+        )
+
+    user = db.scalar(
+        select(User).where(User.email == invite.email)
+    )
+
+    if user is None:
+        user = User(
+            email=invite.email,
+            name=None,
+        )
+        db.add(user)
+        db.flush()
+
+    access_token = create_access_token(user.id)
+
+    team_name = None
+    if invite.target_team_id:
+        team = db.get(Team, invite.target_team_id)
+        if team:
+            team_name = team.name
+
+    return InviteExchangeResponse(
+        access_token=access_token,
+        pending_invite=PendingInvite(
+            invite_id=invite.token,
+            hackathon_id=invite.hackathon_id,
+            team_name=team_name,
+            target_role=invite.target_role.value,
+        ),
+    )
 
 
 @router.post("/logout")

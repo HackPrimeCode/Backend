@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from uuid import UUID
 
 from src.enums import GlobalRole
 
@@ -30,3 +31,17 @@ class UserRead(BaseModel):
     email: str
     name: str
     global_role: GlobalRole
+
+class InviteExchangeRequest(BaseModel):
+    token: UUID
+
+class PendingInvite(BaseModel):
+    invite_id: UUID
+    hackathon_id: int
+    team_name: str | None
+    target_role: str
+
+
+class InviteExchangeResponse(BaseModel):
+    access_token: str
+    pending_invite: PendingInvite

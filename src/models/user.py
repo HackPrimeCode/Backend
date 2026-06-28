@@ -12,8 +12,8 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(unique=True, index=True)
-    name: Mapped[str]
-    hashed_password: Mapped[str]
+    name: Mapped[str | None] = mapped_column(nullable=True)
+    hashed_password: Mapped[str | None] = mapped_column(nullable=True)
     tech_stack: Mapped[list | None] = mapped_column(JSONB, default=list)
     global_role: Mapped[GlobalRole] = mapped_column(
         Enum(
