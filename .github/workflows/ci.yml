@@ -26,5 +26,15 @@ jobs:
       - name: Health check
         run: |
           uvicorn src.main:app --host 0.0.0.0 --port 8000 &
-          sleep 5
-          curl -f http://localhost:8000/health
+          
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health; then
+              echo "Server is up"
+              exit 0
+            fi
+            echo "Attempt $i/30, waiting..."
+            sleep 2
+          done
+          
+          echo "Server failed to start after 60s"
+          exit 1
