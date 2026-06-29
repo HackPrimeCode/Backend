@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, HTTPException, status, BackgroundTasks
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from src.api.deps import CurrentUser, DbSession
 from src.enums import HackathonStatus, InviteTargetRole, ParticipantRole
@@ -9,11 +9,10 @@ from src.models.hackathon import Hackathon
 from src.models.hackathon_participant import HackathonParticipant
 from src.models.invite_token import InviteToken
 from src.models.team import Team
-from src.schemas.team import InviteTokenRead, TeamCreate, TeamCreateResponse
+from src.schemas.team import InviteTokenRead, TeamInviteRequest, TeamCreate, TeamCreateResponse
 from src.services.email_service import send_invite_email
 
 router = APIRouter(tags=["teams"])
-
 
 @router.post(
     "/hackathons/{hackathon_id}/teams",
@@ -25,31 +24,31 @@ def create_team(
     payload: TeamCreate,
     db: DbSession,
     current_user: CurrentUser,
-    background_tasks: BackgroundTasks,
 ) -> TeamCreateResponse:
-    hackathon = db.get(Hackathon, hackathon_id)
-    if hackathon is None or hackathon.status == HackathonStatus.DRAFT:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hackathon not found")
 
-    if hackathon.status != HackathonStatus.REGISTRATION:
+    hackathon = db.get(Hackathon, hackathon_id)
+    if hackathon is None or hackathon.status != HackathonStatus.REGISTRATION:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Teams can only be created during registration",
+            detail="Team creation is not allowed",
         )
 
-    existing_participation = db.scalar(
+    existing = db.scalar(
         select(HackathonParticipant).where(
             HackathonParticipant.user_id == current_user.id,
             HackathonParticipant.hackathon_id == hackathon_id,
         )
     )
-    if existing_participation is not None:
+    if existing:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User is already registered for this hackathon",
+            status_code=400,
+            detail="User already participates in this hackathon",
         )
 
-    team = Team(hackathon_id=hackathon_id, name=payload.team_name)
+    team = Team(
+        hackathon_id=hackathon_id,
+        name=payload.team_name,
+    )
     db.add(team)
     db.flush()
 
@@ -61,35 +60,98 @@ def create_team(
     )
     db.add(participant)
 
-    invite_tokens: list[InviteTokenRead] = []
-    for email in payload.invite_emails:
+    db.commit()
+
+    return TeamCreateResponse(
+        team_id=team.id,
+        team_name=team.name,
+        invite_tokens=[],
+    )
+
+@router.post(
+    "/teams/{team_id}/invite",
+    response_model=list[InviteTokenRead],
+)
+def invite_to_team(
+    team_id: int,
+    payload: TeamInviteRequest,
+    db: DbSession,
+    current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
+):
+    team = db.get(Team, team_id)
+    if team is None:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    hackathon = db.get(Hackathon, team.hackathon_id)
+    if hackathon is None:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+    current_team_members = db.scalar(
+        select(func.count(HackathonParticipant.id)).where(
+        HackathonParticipant.team_id == team_id
+        )
+    )
+
+    pending_invites = db.scalar(
+        select(func.count(InviteToken.token)).where(
+            InviteToken.target_team_id == team_id,
+            InviteToken.is_used == False,
+        )
+    )
+
+    future_team_size = current_team_members + pending_invites + len(payload.emails)
+
+    if future_team_size > hackathon.max_team_size:
+        raise HTTPException(
+            status_code=400,
+            detail="Team size limit exceeded",
+        )
+    captain = db.scalar(
+        select(HackathonParticipant).where(
+            HackathonParticipant.team_id == team_id,
+            HackathonParticipant.user_id == current_user.id,
+            HackathonParticipant.role == ParticipantRole.CAPTAIN,
+        )
+    )
+    if captain is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Only captain can invite participants",
+        )
+
+    created_invites: list[InviteTokenRead] = []
+
+    for email in payload.emails:
         if email.lower() == current_user.email.lower():
             continue
 
         token = InviteToken(
             token=uuid.uuid4(),
             email=email.lower(),
-            hackathon_id=hackathon_id,
+            hackathon_id=team.hackathon_id,
             target_team_id=team.id,
             target_role=InviteTargetRole.PARTICIPANT,
             is_used=False,
         )
         db.add(token)
-        invite_tokens.append(InviteTokenRead(token=str(token.token), email=email.lower()))
+        db.flush()
+
+        created_invites.append(
+            InviteTokenRead(
+                token=str(token.token),
+                email=email.lower(),
+            )
+        )
 
     db.commit()
-    
-    for invite in invite_tokens:
+
+    for invite in created_invites:
         background_tasks.add_task(
             send_invite_email,
             invite.email,
             invite.token,
             hackathon.title,
             "участник",
-    )
+        )
 
-    return TeamCreateResponse(
-        team_id=team.id,
-        team_name=team.name,
-        invite_tokens=invite_tokens,
-    )
+    return created_invites

@@ -5,6 +5,8 @@ class TeamCreate(BaseModel):
     team_name: str = Field(min_length=1, max_length=255)
     invite_emails: list[EmailStr] = Field(default_factory=list)
 
+class TeamInviteRequest(BaseModel):
+    emails: list[EmailStr]
 
 class InviteTokenRead(BaseModel):
     token: str

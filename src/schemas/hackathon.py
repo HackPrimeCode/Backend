@@ -57,6 +57,8 @@ class HackathonRead(BaseModel):
     place: HackPlace
     prizes: list[PrizeResponse] | None = None
     topics: list[Any] | None = None
+    current_participants: int = 0
+    current_teams: int = 0
     min_team_size: int | None = None
     max_team_size: int | None = None
     max_participants: int | None = None
@@ -75,17 +77,15 @@ class HackathonPublicRead(BaseModel):
     description: str | None = None
     status: HackathonStatus
     place: HackPlace
-    
     prizes: list[PrizeResponse] | None = None
     topics: list[Any] | None = None
+    current_participants: int = 0
+    current_teams: int = 0
     min_team_size: int | None = None
     max_team_size: int | None = None
     max_participants: int | None = None
     start_date: datetime | None = None
     end_date: datetime | None = None
     tz_file_url: str | None = None
-
-
-class HackathonDetailRead(HackathonPublicRead):
     submission_requirements: list[Any] | None = None
     evaluation_criteria: list[Any] | None = None
