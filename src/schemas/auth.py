@@ -30,6 +30,7 @@ class UserRead(BaseModel):
     id: int
     email: str
     name: str
+    tech_stack: list[str]
     global_role: GlobalRole
 
 class InviteExchangeRequest(BaseModel):

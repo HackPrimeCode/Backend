@@ -10,7 +10,7 @@ class Team(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     hackathon_id: Mapped[int] = mapped_column(ForeignKey("hackathons.id"), index=True)
     name: Mapped[str]
-
+    description: Mapped[str] = mapped_column(nullable=True)
     hackathon: Mapped["Hackathon"] = relationship(back_populates="teams")
     participants: Mapped[list["HackathonParticipant"]] = relationship(
         back_populates="team"

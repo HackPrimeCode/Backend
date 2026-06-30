@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 class TeamCreate(BaseModel):
     team_name: str = Field(min_length=1, max_length=255)
+    description: str
     invite_emails: list[EmailStr] = Field(default_factory=list)
 
 class TeamInviteRequest(BaseModel):
@@ -16,4 +17,5 @@ class InviteTokenRead(BaseModel):
 class TeamCreateResponse(BaseModel):
     team_id: int
     team_name: str
+    description: str
     invite_tokens: list[InviteTokenRead]
