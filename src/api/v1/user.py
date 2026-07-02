@@ -4,7 +4,7 @@ from src.api.deps import DbSession, CurrentUser
 from src.schemas.auth import UserRead
 from src.schemas.user import UserUpdateRequest
 
-router = APIRouter(prefix="/api/v1/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.put("/me", response_model=UserRead)
