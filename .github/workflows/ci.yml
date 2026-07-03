@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, master]
+  pull_request:
+    branches: [dev, master]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Health check
+        run: |
+          uvicorn src.main:app --host 0.0.0.0 --port 8000 &
+          
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health; then
+              echo "Server is up"
+              exit 0
+            fi
+            echo "Attempt $i/30, waiting..."
+            sleep 2
+          done
+          
+          echo "Server failed to start after 60s"
+          exit 1
