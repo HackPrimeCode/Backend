@@ -7,6 +7,7 @@ from src.api.deps import DbSession, CurrentUser
 from src.schemas.auth import UserRead
 from src.schemas.user import UserUpdateRequest, UserProfileRead
 from src.schemas.hackathon import HackathonRead
+from src.schemas.team import TeamProfileRead
 from src.models.hackathon_participant import HackathonParticipant
 from src.models.team import Team
 
@@ -51,6 +52,7 @@ def get_profile(
 
     active_hackathon = None
     past_hackathons = []
+    current_team_data = None
 
     for p in participations:
         hackathon = p.hackathon
@@ -76,6 +78,20 @@ def get_profile(
         if hackathon.status == HackathonStatus.IN_PROGRESS:
             active_hackathon = hackathon_data
 
+        if p.team is not None:
+                members_count = db.scalar(
+                    select(func.count()).where(
+                        HackathonParticipant.team_id == p.team.id
+                    )
+                )
+
+                current_team_data = TeamProfileRead(
+                    id=p.team.id,
+                    team_name=p.team.name,
+                    members_count=members_count or 0,
+                    role_in_team=p.role.value,
+                )
+
         elif hackathon.status == HackathonStatus.FINISHED:
             past_hackathons.append(hackathon_data)
 
@@ -87,4 +103,5 @@ def get_profile(
         global_role=current_user.global_role,
         active_hackathon=active_hackathon,
         past_hackathons=past_hackathons,
+        current_team=current_team_data,
     )
