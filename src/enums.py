@@ -5,6 +5,7 @@ class GlobalRole(str, enum.Enum):
     ADMIN = "admin"
     USER = "user"
     ORGANIZATOR = "organizator"
+    JUDGE = "judge"
 
 class HackPlace(str, enum.Enum):
     MOSCOW = "Москва"

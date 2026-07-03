@@ -4,13 +4,16 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status, BackgroundTasks
+from sqlalchemy import select
 
-from src.enums import InviteTargetRole
+from src.enums import InviteTargetRole, GlobalRole
 
 from src.api.deps import AdminOrOrganizator, DbSession
 from src.core.storage import s3_storage
 from src.enums import HackathonStatus, HackPlace
 from src.services.email_service import send_invite_email
+from src.models.user import User
+from src.models.hackathon_participant import HackathonParticipant
 from src.models.hackathon import Hackathon
 from src.models.prizes import HackathonPrize
 from src.models.invite_token import InviteToken
@@ -159,7 +162,10 @@ def update_hackathon_status(
     db.refresh(hackathon)
     return hackathon
 
-@router.post("/{hackathon_id}/invite-judges",response_model=InviteJudgesResponse)
+@router.post(
+    "/{hackathon_id}/invite-judges",
+    response_model=InviteJudgesResponse,
+)
 def invite_judges(
     hackathon_id: int,
     payload: InviteJudgesRequest,
@@ -170,17 +176,28 @@ def invite_judges(
     hackathon = db.get(Hackathon, hackathon_id)
     if hackathon is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
             detail="Hackathon not found",
         )
 
-    created_tokens = []
+    created_invites = []
 
     for email in payload.emails:
         email_lower = email.lower()
 
+        existing_invite = db.scalar(
+            select(InviteToken).where(
+                InviteToken.email == email_lower,
+                InviteToken.hackathon_id == hackathon_id,
+                InviteToken.target_role == InviteTargetRole.JUDGE,
+                InviteToken.is_used == False,
+            )
+        )
+
+        if existing_invite:
+            continue
+
         token = InviteToken(
-            token=uuid.uuid4(),
             email=email_lower,
             hackathon_id=hackathon_id,
             target_team_id=None,
@@ -191,17 +208,19 @@ def invite_judges(
         db.add(token)
         db.flush()
 
-        created_tokens.append(str(token.token))
+        created_invites.append(token)
 
     db.commit()
 
-    for token_str, email in zip(created_tokens, payload.emails):
+    for invite in created_invites:
         background_tasks.add_task(
             send_invite_email,
-            email,
-            token_str,
+            invite.email,
+            invite.token,
             hackathon.title,
             "жюри",
         )
 
-    return InviteJudgesResponse(created_invites=created_tokens)
+    return InviteJudgesResponse(
+        created_invites=[str(inv.token) for inv in created_invites]
+    )
