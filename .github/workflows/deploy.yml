@@ -39,9 +39,24 @@ jobs:
 
             alembic upgrade head
 
-            pkill -f "uvicorn src.main:app" || true
-
-            nohup uvicorn src.main:app \
+            PID=$(ss -tlnp | grep ':8000' | sed -n 's/.*pid=\([0-9]*\).*/\1/p')
+            [ -n "$PID" ] && kill "$PID" || true
+          
+            sleep 5
+          
+            setsid uvicorn src.main:app \
               --host 0.0.0.0 \
               --port 8000 \
-              > ~/backend.log 2>&1 &
+              > ~/backend.log 2>&1 < /dev/null &
+          
+            for i in $(seq 1 30); do
+              if curl -sf http://localhost:8000/health; then
+                echo "Server is up"
+                exit 0
+              fi
+              echo "Attempt $i/30, waiting..."
+              sleep 2
+            done
+            
+            echo "Server failed to start after 60s"
+            exit 1
