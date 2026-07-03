@@ -24,7 +24,12 @@ class HackathonParticipant(Base):
             values_callable=enum_values,
         )
     )
+    avatar_color: Mapped[str | None] = mapped_column(nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="hackathon_participations")
     hackathon: Mapped["Hackathon"] = relationship(back_populates="participants")
     team: Mapped["Team | None"] = relationship(back_populates="participants")
+    assigned_tasks: Mapped[list["HackathonTask"]] = relationship(
+        back_populates="assignee",
+        foreign_keys="HackathonTask.assignee_id",
+    )

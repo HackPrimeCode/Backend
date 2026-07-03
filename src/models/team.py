@@ -16,3 +16,8 @@ class Team(Base):
         back_populates="team"
     )
     invite_tokens: Mapped[list["InviteToken"]] = relationship(back_populates="target_team")
+    tasks: Mapped[list["HackathonTask"]] = relationship(
+        back_populates="team",
+        cascade="all, delete-orphan",
+        order_by="HackathonTask.position",
+    )

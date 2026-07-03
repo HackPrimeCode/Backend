@@ -30,3 +30,10 @@ class ParticipantRole(str, enum.Enum):
 class InviteTargetRole(str, enum.Enum):
     PARTICIPANT = "participant"
     JUDGE = "judge"
+
+
+class TaskStatus(str, enum.Enum):
+    BACKLOG = "backlog"
+    IN_WORK = "in_work"
+    REVIEW = "review"
+    DONE = "done"
