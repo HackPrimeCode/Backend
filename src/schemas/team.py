@@ -35,6 +35,8 @@ class TeamProfileRead(BaseModel):
 class TeamMemberRead(BaseModel):
     id: int
     name: str | None
+    email: str
+    tech_stack: list[str] | None
     role: ParticipantRole
 
     model_config = {"from_attributes": True}
@@ -54,6 +56,7 @@ class TeamDetailRead(BaseModel):
     id: int
     name: str
     hackathon: HackathonShortRead
+    description: str | None
 
     members: list[TeamMemberRead]
     members_count: int

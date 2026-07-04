@@ -49,6 +49,7 @@ def create_team(
     team = Team(
         hackathon_id=hackathon_id,
         name=payload.team_name,
+        description=payload.description
     )
     db.add(team)
     db.flush()
@@ -66,6 +67,7 @@ def create_team(
     return TeamCreateResponse(
         team_id=team.id,
         team_name=team.name,
+        description=team.description,
         invite_tokens=[],
     )
 
@@ -119,6 +121,8 @@ def get_team(
             TeamMemberRead(
                 id=m.user.id,
                 name=m.user.name,
+                email = m.user.email,
+                tech_stack = m.user.tech_stack,
                 role=m.role,
             )
             for m in members

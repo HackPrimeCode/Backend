@@ -19,3 +19,14 @@ class UserProfileRead(BaseModel):
     past_hackathons: list[HackathonRead]
     current_team: TeamProfileRead | None
     model_config = {"from_attributes": True}
+
+class AdminUserRead(BaseModel):
+    id: int
+    email: str
+    name: str | None
+    global_role: GlobalRole
+
+    model_config = {"from_attributes": True}
+
+class UserRoleUpdateRequest(BaseModel):
+    global_role: GlobalRole

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status, BackgroundTasks
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from src.enums import InviteTargetRole, GlobalRole
 
@@ -13,10 +13,22 @@ from src.core.storage import s3_storage
 from src.enums import HackathonStatus, HackPlace
 from src.services.email_service import send_invite_email
 from src.models.hackathon import Hackathon
+from src.models.hackathon_participant import HackathonParticipant
+from src.models.team import Team
 from src.models.hackathon_specification import HackathonSpecification
 from src.models.prizes import HackathonPrize
 from src.models.invite_token import InviteToken
-from src.schemas.hackathon import HackathonRead, HackathonAdminListItem, HackathonStatusUpdate, HackathonSpecificationRead, HackathonUpdate, HackathonPublicReadWithTask, HackathonSpecificationCreate
+from src.schemas.hackathon import (
+    HackathonRead,
+    HackathonAdminListItem,
+    HackathonStatusUpdate,
+    HackathonSpecificationRead,
+    HackathonUpdate,
+    HackathonSpecificationCreate,
+    AdminTeamStatsRead,
+    HackathonAdminDetailedStats,
+    AdminHackathonDetailRead
+)
 from src.schemas.auth import InviteJudgesRequest, InviteJudgesResponse
 
 
@@ -118,7 +130,7 @@ def create_hackathon(
 
 
 @router.get(
-    "/admin/hackathons",
+    "/hack_list",
     response_model=list[HackathonAdminListItem],
 )
 def list_hackathons_for_admin(
@@ -137,31 +149,77 @@ def list_hackathons_for_admin(
         for row in results
     ]
 
-@router.put("/{hackathon_id}", response_model=HackathonRead)
-def update_hackathon(
+@router.get(
+    "/{hackathon_id}",
+    response_model=AdminHackathonDetailRead,
+)
+def get_admin_hackathon_detail(
     hackathon_id: int,
-    payload: HackathonUpdate,
     db: DbSession,
     _: AdminOrOrganizator,
-) -> Hackathon:
+):
     hackathon = db.get(Hackathon, hackathon_id)
     if hackathon is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hackathon not found")
+        raise HTTPException(404, "Hackathon not found")
 
-    if hackathon.status not in (HackathonStatus.DRAFT, HackathonStatus.REGISTRATION):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Hackathon can only be edited before it starts",
+
+    participants_count = db.scalar(
+        select(func.count()).where(
+            HackathonParticipant.hackathon_id == hackathon_id
         )
+    ) or 0
 
-    update_data = payload.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(hackathon, field, value)
+    teams = db.scalars(
+        select(Team).where(Team.hackathon_id == hackathon_id)
+    ).all()
 
-    db.commit()
-    db.refresh(hackathon)
-    return hackathon
+    team_ids = [team.id for team in teams]
 
+    members_counts = dict(
+        db.execute(
+            select(
+                HackathonParticipant.team_id,
+                func.count().label("members_count"),
+            )
+            .where(HackathonParticipant.team_id.in_(team_ids))
+            .group_by(HackathonParticipant.team_id)
+        ).all()
+    )
+
+    teams_data = [
+        AdminTeamStatsRead(
+            id=team.id,
+            name=team.name,
+            members_count=members_counts.get(team.id, 0),
+        )
+        for team in teams
+    ]
+
+    spec = db.scalar(
+        select(HackathonSpecification).where(
+            HackathonSpecification.hackathon_id == hackathon_id
+        )
+    )
+
+    return AdminHackathonDetailRead(
+        id=hackathon.id,
+        title=hackathon.title,
+        description=hackathon.description,
+        status=hackathon.status,
+        place=hackathon.place,
+        min_team_size=hackathon.min_team_size,
+        max_team_size=hackathon.max_team_size,
+        max_participants=hackathon.max_participants,
+        total_participants=participants_count,
+        total_teams=len(teams),
+        start_date=hackathon.start_date,
+        end_date=hackathon.end_date,
+        topics=hackathon.topics,
+        submission_requirements=hackathon.submission_requirements,
+        prizes=hackathon.prizes,
+        specification=spec,
+        teams=teams_data,
+    )
 
 @router.patch("/{hackathon_id}/status", response_model=HackathonRead)
 def update_hackathon_status(
@@ -243,7 +301,7 @@ def invite_judges(
     )
 
 @router.post(
-    "/hackathons/{hackathon_id}/specification",
+    "/{hackathon_id}/specification",
     response_model=HackathonSpecificationRead,
 )
 def create_specification(
@@ -273,7 +331,7 @@ def create_specification(
     return spec
 
 @router.put(
-    "/hackathons/{hackathon_id}/specification",
+    "/{hackathon_id}/specification",
     response_model=HackathonSpecificationRead,
 )
 def update_specification(
@@ -298,4 +356,3 @@ def update_specification(
     db.refresh(spec)
 
     return spec
-

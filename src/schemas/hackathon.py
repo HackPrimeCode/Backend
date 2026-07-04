@@ -117,3 +117,50 @@ class HackathonAdminListItem(BaseModel):
     title: str
 
     model_config = {"from_attributes": True}
+
+class AdminTeamStatsRead(BaseModel):
+    id: int
+    name: str
+    members_count: int
+
+    model_config = {"from_attributes": True}
+
+class HackathonAdminDetailedStats(BaseModel):
+    id: int
+    title: str
+    status: HackathonStatus
+
+    total_participants: int
+    total_teams: int
+
+    teams: list[AdminTeamStatsRead]
+
+    model_config = {"from_attributes": True}
+
+class AdminHackathonDetailRead(BaseModel):
+    id: int
+    title: str
+    description: str | None
+    status: HackathonStatus
+    place: HackPlace
+
+    min_team_size: int
+    max_team_size: int
+    max_participants: int | None
+
+    total_participants: int
+    total_teams: int
+
+    start_date: datetime | None
+    end_date: datetime | None
+
+    topics: list[str] | None
+    submission_requirements: list[str] | None
+
+    prizes: list[PrizeResponse] | None
+
+    specification: HackathonSpecificationRead | None
+
+    teams: list[AdminTeamStatsRead]
+
+    model_config = {"from_attributes": True}

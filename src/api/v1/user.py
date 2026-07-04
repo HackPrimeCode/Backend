@@ -105,3 +105,4 @@ def get_profile(
         past_hackathons=past_hackathons,
         current_team=current_team_data,
     )
+
