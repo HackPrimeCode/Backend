@@ -5,7 +5,7 @@ from src.models.invite_token import InviteToken
 from src.models.team import Team
 from src.models.user import User
 from src.models.prizes import HackathonPrize
-
+from .hackathon_specification import HackathonSpecification
 
 __all__ = [
     "User",
@@ -15,4 +15,5 @@ __all__ = [
     "HackathonTask",
     "InviteToken",
     "HackathonPrize",
+    "HackathonSpecification"
 ]

@@ -6,8 +6,8 @@ from src.enums import HackathonStatus
 from src.models.hackathon import Hackathon
 from src.models.team import Team
 from src.models.hackathon_participant import HackathonParticipant
-from src.schemas.hackathon import HackathonRead, HackathonPublicRead
-from src.schemas.auth import InviteJudgesRequest, InviteJudgesResponse
+from src.models.hackathon_specification import HackathonSpecification
+from src.schemas.hackathon import HackathonRead, HackathonPublicRead, HackathonSpecificationRead, HackathonPublicReadWithTask, HackathonSpecificationCreate
 
 router = APIRouter(prefix="/hackathons", tags=["hackathons"])
 
@@ -86,4 +86,78 @@ def get_hackathon(hackathon_id: int, db: DbSession):
         **hackathon.__dict__,
         current_participants=participants_count or 0,
         current_teams=teams_count or 0,
+    )
+
+@router.get(
+    "/hackathons/{hackathon_id}/specification",
+    response_model=HackathonSpecificationRead,
+)
+def get_specification(
+    hackathon_id: int,
+    db: DbSession,
+):
+    spec = db.scalar(
+        select(HackathonSpecification).where(
+            HackathonSpecification.hackathon_id == hackathon_id
+        )
+    )
+
+    if spec is None:
+        raise HTTPException(404, "Specification not found")
+
+    return spec
+
+@router.get(
+    "/hackathons/{hackathon_id}/details-with-task",
+    response_model=HackathonPublicReadWithTask,
+)
+def get_hackathon_with_task(
+    hackathon_id: int,
+    db: DbSession,
+):
+    hackathon = db.get(Hackathon, hackathon_id)
+    if hackathon is None:
+        raise HTTPException(404, "Hackathon not found")
+
+    spec = db.scalar(
+        select(HackathonSpecification).where(
+            HackathonSpecification.hackathon_id == hackathon_id
+        )
+    )
+
+    participants_count = db.scalar(
+        select(func.count()).where(
+            HackathonParticipant.hackathon_id == hackathon_id
+        )
+    ) or 0
+
+    teams_count = db.scalar(
+        select(func.count()).where(
+            Team.hackathon_id == hackathon_id
+        )
+    ) or 0
+
+    return HackathonPublicReadWithTask(
+        id=hackathon.id,
+        title=hackathon.title,
+        description=hackathon.description,
+        status=hackathon.status,
+        place=hackathon.place,
+        prizes=hackathon.prizes,
+        topics=hackathon.topics,
+        min_team_size=hackathon.min_team_size,
+        max_team_size=hackathon.max_team_size,
+        max_participants=hackathon.max_participants,
+        total_participants=participants_count,
+        total_teams=teams_count,
+        start_date=hackathon.start_date,
+        end_date=hackathon.end_date,
+        submission_requirements=hackathon.submission_requirements,
+
+        task=spec.task if spec else None,
+        task_description=spec.task_description if spec else None,
+        functional_requirements=spec.functional_requirements if spec else None,
+        technical_limitations=spec.technical_limitations if spec else None,
+        evaluation_criteria=spec.evaluation_criteria if spec else None,
+        files=spec.files if spec else None,
     )

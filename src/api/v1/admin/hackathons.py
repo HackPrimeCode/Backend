@@ -12,12 +12,11 @@ from src.api.deps import AdminOrOrganizator, DbSession
 from src.core.storage import s3_storage
 from src.enums import HackathonStatus, HackPlace
 from src.services.email_service import send_invite_email
-from src.models.user import User
-from src.models.hackathon_participant import HackathonParticipant
 from src.models.hackathon import Hackathon
+from src.models.hackathon_specification import HackathonSpecification
 from src.models.prizes import HackathonPrize
 from src.models.invite_token import InviteToken
-from src.schemas.hackathon import HackathonRead, HackathonStatusUpdate, HackathonUpdate
+from src.schemas.hackathon import HackathonRead, HackathonStatusUpdate, HackathonSpecificationRead, HackathonUpdate, HackathonPublicReadWithTask, HackathonSpecificationCreate
 from src.schemas.auth import InviteJudgesRequest, InviteJudgesResponse
 
 
@@ -69,7 +68,6 @@ def create_hackathon(
     start_date: Annotated[str | None, Form()] = None,
     end_date: Annotated[str | None, Form()] = None,
     submission_requirements: Annotated[str | None, Form()] = None,
-    evaluation_criteria: Annotated[str | None, Form()] = None,
     tz_file: Annotated[UploadFile | None, File()] = None,
 ) -> Hackathon:
 
@@ -86,7 +84,6 @@ def create_hackathon(
         start_date=_parse_optional_datetime(start_date),
         end_date=_parse_optional_datetime(end_date),
         submission_requirements=_parse_json_list(submission_requirements, "submission_requirements"),
-        evaluation_criteria=_parse_json_list(evaluation_criteria, "evaluation_criteria"),
         status=HackathonStatus.DRAFT,
     )
 
@@ -224,3 +221,60 @@ def invite_judges(
     return InviteJudgesResponse(
         created_invites=[str(inv.token) for inv in created_invites]
     )
+
+@router.post(
+    "/hackathons/{hackathon_id}/specification",
+    response_model=HackathonSpecificationRead,
+)
+def create_specification(
+    hackathon_id: int,
+    payload: HackathonSpecificationCreate,
+    db: DbSession,
+    _: AdminOrOrganizator,
+):
+    existing = db.scalar(
+        select(HackathonSpecification).where(
+            HackathonSpecification.hackathon_id == hackathon_id
+        )
+    )
+
+    if existing:
+        raise HTTPException(400, "Specification already exists")
+
+    spec = HackathonSpecification(
+        hackathon_id=hackathon_id,
+        **payload.model_dump()
+    )
+
+    db.add(spec)
+    db.commit()
+    db.refresh(spec)
+
+    return spec
+
+@router.put(
+    "/hackathons/{hackathon_id}/specification",
+    response_model=HackathonSpecificationRead,
+)
+def update_specification(
+    hackathon_id: int,
+    payload: HackathonSpecificationCreate,
+    db: DbSession,
+    _: AdminOrOrganizator,
+):
+    spec = db.scalar(
+        select(HackathonSpecification).where(
+            HackathonSpecification.hackathon_id == hackathon_id
+        )
+    )
+
+    if spec is None:
+        raise HTTPException(404, "Specification not found")
+
+    for field, value in payload.model_dump().items():
+        setattr(spec, field, value)
+
+    db.commit()
+    db.refresh(spec)
+
+    return spec
