@@ -62,3 +62,6 @@ class TeamDetailRead(BaseModel):
     pending_invites: list[InviteTokenRead]
 
     model_config = {"from_attributes": True}
+
+class TeamUpdateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=255)

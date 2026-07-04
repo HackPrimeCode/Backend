@@ -10,7 +10,7 @@ from src.models.hackathon import Hackathon
 from src.models.hackathon_participant import HackathonParticipant
 from src.models.invite_token import InviteToken
 from src.models.team import Team
-from src.schemas.team import InviteTokenRead, TeamInviteRequest, TeamCreate, TeamCreateResponse, TeamDetailRead, TeamMemberRead
+from src.schemas.team import InviteTokenRead, TeamInviteRequest, TeamCreate, TeamCreateResponse, TeamDetailRead, TeamMemberRead, TeamUpdateRequest
 from src.services.email_service import send_invite_email
 
 router = APIRouter(tags=["teams"])
@@ -263,3 +263,75 @@ def remove_member(
     db.commit()
 
     return {"status": "member removed"}
+
+@router.put("/teams/{team_id}", response_model=TeamDetailRead)
+def update_team(
+    team_id: int,
+    payload: TeamUpdateRequest,
+    db: DbSession,
+    current_user: CurrentUser,
+):
+    team = db.get(Team, team_id)
+    if team is None:
+        raise HTTPException(404, "Team not found")
+
+    hackathon = db.get(Hackathon, team.hackathon_id)
+
+    if hackathon.status == HackathonStatus.FINISHED:
+        raise HTTPException(400, "Cannot edit team after hackathon finished")
+
+    captain = db.scalar(
+        select(HackathonParticipant).where(
+            HackathonParticipant.team_id == team_id,
+            HackathonParticipant.user_id == current_user.id,
+            HackathonParticipant.role == ParticipantRole.CAPTAIN,
+        )
+    )
+
+    if not captain:
+        raise HTTPException(403, "Only captain can edit the team")
+
+    team.name = payload.name
+
+    db.commit()
+    db.refresh(team)
+
+    return get_team(team_id, db, current_user)
+
+@router.delete("/teams/{team_id}/invites/{token}")
+def cancel_invite(
+    team_id: int,
+    token: uuid.UUID,
+    db: DbSession,
+    current_user: CurrentUser,
+):
+    team = db.get(Team, team_id)
+    if team is None:
+        raise HTTPException(404, "Team not found")
+
+    captain = db.scalar(
+        select(HackathonParticipant).where(
+            HackathonParticipant.team_id == team_id,
+            HackathonParticipant.user_id == current_user.id,
+            HackathonParticipant.role == ParticipantRole.CAPTAIN,
+        )
+    )
+
+    if not captain:
+        raise HTTPException(403, "Only captain can cancel invites")
+
+    invite = db.scalar(
+        select(InviteToken).where(
+            InviteToken.token == token,
+            InviteToken.target_team_id == team_id,
+            InviteToken.is_used == False,
+        )
+    )
+
+    if invite is None:
+        raise HTTPException(404, "Active invite not found")
+
+    db.delete(invite)
+    db.commit()
+
+    return {"status": "invite cancelled"}
