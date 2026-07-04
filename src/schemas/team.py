@@ -4,9 +4,8 @@ from datetime import datetime
 from src.enums import ParticipantRole, HackathonStatus
 
 class TeamCreateRequest(BaseModel):
-    hackathon_id: int
     team_name: str = Field(min_length=1, max_length=255)
-    description: str
+    description: str | None
     invite_emails: list[EmailStr] = Field(default_factory=list)
 
 class TeamInviteRequest(BaseModel):
