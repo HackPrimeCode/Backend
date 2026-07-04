@@ -149,31 +149,12 @@ def invite_to_team(
 ):
     team = db.get(Team, team_id)
     if team is None:
-        raise HTTPException(status_code=404, detail="Team not found")
+        raise HTTPException(404, "Team not found")
 
     hackathon = db.get(Hackathon, team.hackathon_id)
     if hackathon is None:
-        raise HTTPException(status_code=404, detail="Hackathon not found")
-    current_team_members = db.scalar(
-        select(func.count(HackathonParticipant.id)).where(
-        HackathonParticipant.team_id == team_id
-        )
-    )
+        raise HTTPException(404, "Hackathon not found")
 
-    pending_invites = db.scalar(
-        select(func.count(InviteToken.token)).where(
-            InviteToken.target_team_id == team_id,
-            InviteToken.is_used == False,
-        )
-    )
-
-    future_team_size = current_team_members + pending_invites + len(payload.emails)
-
-    if future_team_size > hackathon.max_team_size:
-        raise HTTPException(
-            status_code=400,
-            detail="Team size limit exceeded",
-        )
     captain = db.scalar(
         select(HackathonParticipant).where(
             HackathonParticipant.team_id == team_id,
@@ -182,32 +163,59 @@ def invite_to_team(
         )
     )
     if captain is None:
-        raise HTTPException(
-            status_code=403,
-            detail="Only captain can invite participants",
-        )
+        raise HTTPException(403, "Only captain can invite participants")
 
-    created_invites: list[InviteTokenRead] = []
+    current_members = db.scalar(
+        select(func.count()).where(
+            HackathonParticipant.team_id == team_id
+        )
+    )
+
+    pending_invites = db.scalar(
+        select(func.count()).where(
+            InviteToken.target_team_id == team_id,
+            InviteToken.is_used == False,
+        )
+    )
+
+    if hackathon.max_team_size is not None:
+        future_size = current_members + pending_invites + len(payload.emails)
+        if future_size > hackathon.max_team_size:
+            raise HTTPException(400, "Team size limit exceeded")
+
+    created_invites = []
 
     for email in payload.emails:
-        if email.lower() == current_user.email.lower():
+        email_lower = email.lower()
+
+        if email_lower == current_user.email.lower():
+            continue
+
+        existing_invite = db.scalar(
+            select(InviteToken).where(
+                InviteToken.email == email_lower,
+                InviteToken.target_team_id == team.id,
+                InviteToken.is_used == False,
+            )
+        )
+        if existing_invite:
             continue
 
         token = InviteToken(
-            token=uuid.uuid4(),
-            email=email.lower(),
+            email=email_lower,
             hackathon_id=team.hackathon_id,
             target_team_id=team.id,
             target_role=InviteTargetRole.PARTICIPANT,
             is_used=False,
         )
+
         db.add(token)
         db.flush()
 
         created_invites.append(
             InviteTokenRead(
                 token=str(token.token),
-                email=email.lower(),
+                email=email_lower,
             )
         )
 

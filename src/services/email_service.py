@@ -1,6 +1,7 @@
 from uuid import UUID
 from fastapi_mail import MessageSchema
 from src.core.email import fastmail
+from src.core.config import settings
 
 
 async def send_invite_email(
@@ -9,7 +10,7 @@ async def send_invite_email(
     title: str,
     role: str,
 ):
-    link = f"http://localhost:5173/auth?token={token}"
+    link = f"{settings.FRONTEND_URL}/invite?token={token}"
 
     html_content = f"""
     <html>

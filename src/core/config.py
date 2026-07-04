@@ -22,6 +22,8 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
+    FRONTEND_URL: str = "http://localhost:5173"
+
     S3_ENDPOINT_URL: str = "http://localhost:9000"
     S3_ACCESS_KEY: str = "minioadmin"
     S3_SECRET_KEY: str = "minioadmin"
