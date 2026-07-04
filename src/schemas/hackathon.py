@@ -111,3 +111,9 @@ class HackathonPublicReadWithTask(HackathonPublicRead):
     technical_limitations: list[str] | None
     evaluation_criteria: list[str] | None
     files: list[str] | None
+
+class HackathonAdminListItem(BaseModel):
+    id: int
+    title: str
+
+    model_config = {"from_attributes": True}

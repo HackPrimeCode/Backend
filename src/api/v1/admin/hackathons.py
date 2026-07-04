@@ -16,7 +16,7 @@ from src.models.hackathon import Hackathon
 from src.models.hackathon_specification import HackathonSpecification
 from src.models.prizes import HackathonPrize
 from src.models.invite_token import InviteToken
-from src.schemas.hackathon import HackathonRead, HackathonStatusUpdate, HackathonSpecificationRead, HackathonUpdate, HackathonPublicReadWithTask, HackathonSpecificationCreate
+from src.schemas.hackathon import HackathonRead, HackathonAdminListItem, HackathonStatusUpdate, HackathonSpecificationRead, HackathonUpdate, HackathonPublicReadWithTask, HackathonSpecificationCreate
 from src.schemas.auth import InviteJudgesRequest, InviteJudgesResponse
 
 
@@ -116,6 +116,26 @@ def create_hackathon(
 
     return hackathon
 
+
+@router.get(
+    "/admin/hackathons",
+    response_model=list[HackathonAdminListItem],
+)
+def list_hackathons_for_admin(
+    db: DbSession,
+    _: AdminOrOrganizator,
+):
+    stmt = (
+        select(Hackathon.id, Hackathon.title)
+        .order_by(Hackathon.id.desc())
+    )
+
+    results = db.execute(stmt).all()
+
+    return [
+        HackathonAdminListItem(id=row.id, title=row.title)
+        for row in results
+    ]
 
 @router.put("/{hackathon_id}", response_model=HackathonRead)
 def update_hackathon(
@@ -278,3 +298,4 @@ def update_specification(
     db.refresh(spec)
 
     return spec
+
