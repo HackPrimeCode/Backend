@@ -3,7 +3,8 @@ from datetime import datetime
 
 from src.enums import ParticipantRole, HackathonStatus
 
-class TeamCreate(BaseModel):
+class TeamCreateRequest(BaseModel):
+    hackathon_id: int
     team_name: str = Field(min_length=1, max_length=255)
     description: str
     invite_emails: list[EmailStr] = Field(default_factory=list)

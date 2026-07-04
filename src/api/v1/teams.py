@@ -10,7 +10,7 @@ from src.models.hackathon import Hackathon
 from src.models.hackathon_participant import HackathonParticipant
 from src.models.invite_token import InviteToken
 from src.models.team import Team
-from src.schemas.team import InviteTokenRead, TeamInviteRequest, TeamCreate, TeamCreateResponse, TeamDetailRead, TeamMemberRead, TeamUpdateRequest
+from src.schemas.team import InviteTokenRead, TeamInviteRequest, TeamCreateRequest, TeamCreateResponse, TeamDetailRead, TeamMemberRead, TeamUpdateRequest
 from src.services.email_service import send_invite_email
 
 router = APIRouter(tags=["teams"])
@@ -21,13 +21,12 @@ router = APIRouter(tags=["teams"])
     status_code=status.HTTP_201_CREATED,
 )
 def create_team(
-    hackathon_id: int,
-    payload: TeamCreate,
+    payload: TeamCreateRequest,
     db: DbSession,
     current_user: CurrentUser,
 ) -> TeamCreateResponse:
 
-    hackathon = db.get(Hackathon, hackathon_id)
+    hackathon = db.get(Hackathon, payload.hackathon_id)
     if hackathon is None or hackathon.status != HackathonStatus.REGISTRATION:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -37,7 +36,7 @@ def create_team(
     existing = db.scalar(
         select(HackathonParticipant).where(
             HackathonParticipant.user_id == current_user.id,
-            HackathonParticipant.hackathon_id == hackathon_id,
+            HackathonParticipant.hackathon_id == payload.hackathon_id,
         )
     )
     if existing:
@@ -47,7 +46,7 @@ def create_team(
         )
 
     team = Team(
-        hackathon_id=hackathon_id,
+        hackathon_id=payload.hackathon_id,
         name=payload.team_name,
         description=payload.description
     )
@@ -56,7 +55,7 @@ def create_team(
 
     participant = HackathonParticipant(
         user_id=current_user.id,
-        hackathon_id=hackathon_id,
+        hackathon_id=payload.hackathon_id,
         team_id=team.id,
         role=ParticipantRole.CAPTAIN,
     )
