@@ -29,7 +29,6 @@ class HackathonCreate(BaseModel):
     topics: list[Any] = Field(default_factory=list)
     max_participants: int | None = None
     submission_requirements: list[Any] = Field(default_factory=list)
-    evaluation_criteria: list[Any] = Field(default_factory=list)
 
 
 class HackathonUpdate(BaseModel):
@@ -40,7 +39,6 @@ class HackathonUpdate(BaseModel):
     topics: list[Any] | None = None
     prizes: list[PrizeCreate] | None = None
     submission_requirements: list[Any] | None = None
-    evaluation_criteria: list[Any] | None = None
 
 
 class HackathonStatusUpdate(BaseModel):
@@ -63,7 +61,6 @@ class HackathonRead(BaseModel):
     max_team_size: int | None = None
     max_participants: int | None = None
     submission_requirements: list[Any] | None = None
-    evaluation_criteria: list[Any] | None = None
     start_date: datetime | None = None
     end_date: datetime | None = None
     tz_file_url: str | None = None
@@ -88,4 +85,82 @@ class HackathonPublicRead(BaseModel):
     end_date: datetime | None = None
     tz_file_url: str | None = None
     submission_requirements: list[Any] | None = None
-    evaluation_criteria: list[Any] | None = None
+
+class HackathonSpecificationCreate(BaseModel):
+    task: str
+    task_description: str | None = None
+    functional_requirements: list[str] | None = []
+    technical_limitations: list[str] | None = []
+    evaluation_criteria: list[str] | None = []
+    files: list[str] | None = []
+
+class HackathonSpecificationRead(BaseModel):
+    task: str
+    task_description: str | None
+    functional_requirements: list[str] | None
+    technical_limitations: list[str] | None
+    evaluation_criteria: list[str] | None
+    files: list[str] | None
+
+    model_config = {"from_attributes": True}
+
+class HackathonPublicReadWithTask(HackathonPublicRead):
+    task: str | None
+    task_description: str | None
+    functional_requirements: list[str] | None
+    technical_limitations: list[str] | None
+    evaluation_criteria: list[str] | None
+    files: list[str] | None
+
+class HackathonAdminListItem(BaseModel):
+    id: int
+    title: str
+
+    model_config = {"from_attributes": True}
+
+class AdminTeamStatsRead(BaseModel):
+    id: int
+    name: str
+    members_count: int
+
+    model_config = {"from_attributes": True}
+
+class HackathonAdminDetailedStats(BaseModel):
+    id: int
+    title: str
+    status: HackathonStatus
+
+    total_participants: int
+    total_teams: int
+
+    teams: list[AdminTeamStatsRead]
+
+    model_config = {"from_attributes": True}
+
+class AdminHackathonDetailRead(BaseModel):
+    id: int
+    title: str
+    description: str | None
+    status: HackathonStatus
+    place: HackPlace
+
+    min_team_size: int
+    max_team_size: int
+    max_participants: int | None
+
+    total_participants: int
+    total_teams: int
+
+    start_date: datetime | None
+    end_date: datetime | None
+
+    topics: list[str] | None
+    submission_requirements: list[str] | None
+
+    prizes: list[PrizeResponse] | None
+
+    specification: HackathonSpecificationRead | None
+
+    teams: list[AdminTeamStatsRead]
+
+    model_config = {"from_attributes": True}
