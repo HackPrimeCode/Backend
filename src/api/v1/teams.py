@@ -2,14 +2,15 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 from sqlalchemy import select, func
+from sqlalchemy.orm import joinedload
 
 from src.api.deps import CurrentUser, DbSession
-from src.enums import HackathonStatus, InviteTargetRole, ParticipantRole
+from src.enums import HackathonStatus, InviteTargetRole, ParticipantRole, GlobalRole
 from src.models.hackathon import Hackathon
 from src.models.hackathon_participant import HackathonParticipant
 from src.models.invite_token import InviteToken
 from src.models.team import Team
-from src.schemas.team import InviteTokenRead, TeamInviteRequest, TeamCreate, TeamCreateResponse
+from src.schemas.team import InviteTokenRead, TeamInviteRequest, TeamCreate, TeamCreateResponse, TeamDetailRead, TeamMemberRead
 from src.services.email_service import send_invite_email
 
 router = APIRouter(tags=["teams"])
@@ -66,6 +67,73 @@ def create_team(
         team_id=team.id,
         team_name=team.name,
         invite_tokens=[],
+    )
+
+@router.get("/teams/{team_id}", response_model=TeamDetailRead)
+def get_team(
+    team_id: int,
+    db: DbSession,
+    current_user: CurrentUser,
+):
+    team = db.get(Team, team_id)
+    if team is None:
+        raise HTTPException(404, "Team not found")
+
+
+    participation = db.scalar(
+        select(HackathonParticipant).where(
+            HackathonParticipant.team_id == team_id,
+            HackathonParticipant.user_id == current_user.id,
+        )
+    )
+
+    if not participation and current_user.global_role not in (
+        GlobalRole.ADMIN,
+        GlobalRole.ORGANIZATOR,
+        GlobalRole.JUDGE,
+    ):
+        raise HTTPException(403, "Access denied")
+
+    hackathon = db.get(Hackathon, team.hackathon_id)
+
+    members = db.execute(
+        select(HackathonParticipant)
+        .options(joinedload(HackathonParticipant.user))
+        .where(HackathonParticipant.team_id == team_id)
+    ).scalars().all()
+
+    invites = db.scalars(
+        select(InviteToken).where(
+            InviteToken.target_team_id == team_id,
+            InviteToken.is_used == False,
+        )
+    ).all()
+
+    hackathon = db.get(Hackathon, team.hackathon_id)
+
+    return TeamDetailRead(
+        id=team.id,
+        name=team.name,
+        hackathon=hackathon,
+        members=[
+            TeamMemberRead(
+                id=m.user.id,
+                name=m.user.name,
+                role=m.role,
+            )
+            for m in members
+        ],
+        members_count=len(members),
+        max_team_size=hackathon.max_team_size,
+        pending_invites=[
+            InviteTokenRead(
+                token=str(inv.token),
+                email=inv.email,
+            )
+            for inv in invites
+        ]
+        
+        ,
     )
 
 @router.post(
@@ -155,3 +223,43 @@ def invite_to_team(
         )
 
     return created_invites
+
+@router.delete("/teams/{team_id}/members/{user_id}")
+def remove_member(
+    team_id: int,
+    user_id: int,
+    db: DbSession,
+    current_user: CurrentUser,
+):
+    team = db.get(Team, team_id)
+    if team is None:
+        raise HTTPException(404, "Team not found")
+
+    captain = db.scalar(
+        select(HackathonParticipant).where(
+            HackathonParticipant.team_id == team_id,
+            HackathonParticipant.user_id == current_user.id,
+            HackathonParticipant.role == ParticipantRole.CAPTAIN,
+        )
+    )
+
+    if not captain:
+        raise HTTPException(403, "Only captain can remove members")
+
+    if user_id == current_user.id:
+        raise HTTPException(400, "Captain cannot remove himself")
+
+    member = db.scalar(
+        select(HackathonParticipant).where(
+            HackathonParticipant.team_id == team_id,
+            HackathonParticipant.user_id == user_id,
+        )
+    )
+
+    if not member:
+        raise HTTPException(404, "Member not found")
+
+    db.delete(member)
+    db.commit()
+
+    return {"status": "member removed"}

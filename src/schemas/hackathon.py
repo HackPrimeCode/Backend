@@ -89,3 +89,14 @@ class HackathonPublicRead(BaseModel):
     tz_file_url: str | None = None
     submission_requirements: list[Any] | None = None
     evaluation_criteria: list[Any] | None = None
+
+class HackathonShortRead(BaseModel):
+    id: int
+    title: str
+    status: HackathonStatus
+    start_date: datetime | None
+    end_date: datetime | None
+    max_team_size: int | None
+    max_participants: int | None
+
+    model_config = {"from_attributes": True}
