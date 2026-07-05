@@ -199,6 +199,12 @@ def get_admin_hackathon_detail(
         )
     )
 
+    submission_requirements = (
+    hackathon.specification.submission_requirements
+    if hackathon.specification
+    else []
+    )
+
     return AdminHackathonDetailRead(
         id=hackathon.id,
         title=hackathon.title,
@@ -208,6 +214,7 @@ def get_admin_hackathon_detail(
         min_team_size=hackathon.min_team_size,
         max_team_size=hackathon.max_team_size,
         max_participants=hackathon.max_participants,
+        submission_requirements=submission_requirements,
         total_participants=participants_count,
         total_teams=len(teams),
         start_date=hackathon.start_date,
