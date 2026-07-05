@@ -53,13 +53,24 @@ def list_hackathons(db: DbSession):
     results = db.execute(stmt).all()
 
     return [
-        HackathonPublicRead(
-            **h.__dict__,
-            current_participants=p_count,
-            current_teams=t_count,
-        )
-        for h, p_count, t_count in results
-    ]
+    HackathonPublicRead(
+        id=h.id,
+        title=h.title,
+        description=h.description,
+        status=h.status,
+        place=h.place,
+        prizes=h.prizes,
+        topics=h.topics,
+        min_team_size=h.min_team_size,
+        max_team_size=h.max_team_size,
+        max_participants=h.max_participants,
+        current_participants=p_count,
+        current_teams=t_count,
+        start_date=h.start_date,
+        end_date=h.end_date,
+    )
+    for h, p_count, t_count in results
+]
 
 
 @router.get("/{hackathon_id}", response_model=HackathonRead)
@@ -148,16 +159,16 @@ def get_hackathon_with_task(
         min_team_size=hackathon.min_team_size,
         max_team_size=hackathon.max_team_size,
         max_participants=hackathon.max_participants,
-        total_participants=participants_count,
-        total_teams=teams_count,
+        current_participants=participants_count,
+        current_teams=teams_count,
         start_date=hackathon.start_date,
         end_date=hackathon.end_date,
-        submission_requirements=hackathon.submission_requirements,
 
         task=spec.task if spec else None,
         task_description=spec.task_description if spec else None,
         functional_requirements=spec.functional_requirements if spec else None,
         technical_limitations=spec.technical_limitations if spec else None,
         evaluation_criteria=spec.evaluation_criteria if spec else None,
+        submission_requirements=spec.submission_requirements if spec else None,
         files=spec.files if spec else None,
     )

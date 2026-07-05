@@ -79,7 +79,6 @@ def create_hackathon(
     max_participants: Annotated[int, Form()] = None,
     start_date: Annotated[str | None, Form()] = None,
     end_date: Annotated[str | None, Form()] = None,
-    submission_requirements: Annotated[str | None, Form()] = None,
     tz_file: Annotated[UploadFile | None, File()] = None,
 ) -> Hackathon:
 
@@ -95,7 +94,6 @@ def create_hackathon(
         place = place,
         start_date=_parse_optional_datetime(start_date),
         end_date=_parse_optional_datetime(end_date),
-        submission_requirements=_parse_json_list(submission_requirements, "submission_requirements"),
         status=HackathonStatus.DRAFT,
     )
 
@@ -215,7 +213,6 @@ def get_admin_hackathon_detail(
         start_date=hackathon.start_date,
         end_date=hackathon.end_date,
         topics=hackathon.topics,
-        submission_requirements=hackathon.submission_requirements,
         prizes=hackathon.prizes,
         specification=spec,
         teams=teams_data,
@@ -233,6 +230,42 @@ def update_hackathon_status(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hackathon not found")
 
     hackathon.status = payload.status
+    db.commit()
+    db.refresh(hackathon)
+    return hackathon
+
+@router.patch("/{hackathon_id}", response_model=HackathonRead)
+def update_hackathon(
+    hackathon_id: int,
+    payload: HackathonUpdate,
+    db: DbSession,
+    _: AdminOrOrganizator,
+) -> Hackathon:
+    hackathon = db.get(Hackathon, hackathon_id)
+    if hackathon is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Hackathon not found",
+        )
+
+    update_data = payload.model_dump(exclude_unset=True)
+
+    prizes = update_data.pop("prizes", None)
+
+    for field, value in update_data.items():
+        setattr(hackathon, field, value)
+
+    if prizes is not None:
+        hackathon.prizes.clear()
+
+        for prize_data in prizes:
+            hackathon.prizes.append(
+                HackathonPrize(
+                    title=prize_data["title"],
+                    reward=prize_data["reward"],
+                )
+            )
+
     db.commit()
     db.refresh(hackathon)
     return hackathon

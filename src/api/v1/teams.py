@@ -1,5 +1,6 @@
 import uuid
 
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
@@ -10,8 +11,11 @@ from src.models.hackathon import Hackathon
 from src.models.hackathon_participant import HackathonParticipant
 from src.models.invite_token import InviteToken
 from src.models.team import Team
-from src.schemas.team import InviteTokenRead, TeamInviteRequest, TeamCreate, TeamCreateResponse, TeamDetailRead, TeamMemberRead, TeamUpdateRequest
+from src.models.submission import Submission
+from src.schemas.team import InviteTokenRead, TeamInviteRequest, TeamCreateRequest, TeamCreateResponse, TeamDetailRead, TeamMemberRead, TeamUpdateRequest
+from src.schemas.submission import SubmissionCreate, SubmissionRead
 from src.services.email_service import send_invite_email
+
 
 router = APIRouter(tags=["teams"])
 
@@ -22,7 +26,7 @@ router = APIRouter(tags=["teams"])
 )
 def create_team(
     hackathon_id: int,
-    payload: TeamCreate,
+    payload: TeamCreateRequest,
     db: DbSession,
     current_user: CurrentUser,
 ) -> TeamCreateResponse:
@@ -117,6 +121,7 @@ def get_team(
         id=team.id,
         name=team.name,
         hackathon=hackathon,
+        description=team.description,
         members=[
             TeamMemberRead(
                 id=m.user.id,
@@ -347,3 +352,79 @@ def cancel_invite(
     db.commit()
 
     return {"status": "invite cancelled"}
+
+@router.post(
+    "/{team_id}/submit",
+    response_model=SubmissionRead,
+)
+def submit_solution(
+    team_id: int,
+    payload: SubmissionCreate,
+    db: DbSession,
+    current_user: CurrentUser,
+):
+    team = db.get(Team, team_id)
+    if team is None:
+        raise HTTPException(404, "Team not found")
+
+    hackathon = db.get(Hackathon, team.hackathon_id)
+
+    participation = db.scalar(
+        select(HackathonParticipant).where(
+            HackathonParticipant.team_id == team_id,
+            HackathonParticipant.user_id == current_user.id,
+        )
+    )
+    if not participation:
+        raise HTTPException(403, "You are not a member of this team")
+
+    if hackathon.status != HackathonStatus.IN_PROGRESS:
+        raise HTTPException(400, "Hackathon is not active")
+
+    if hackathon.end_date and datetime.utcnow() > hackathon.end_date:
+        raise HTTPException(400, "Submission deadline passed")
+
+    existing_submission = db.scalar(
+        select(Submission).where(Submission.team_id == team_id)
+    )
+
+    if existing_submission:
+        existing_submission.description = payload.description
+        existing_submission.repository_url = payload.repository_url
+        existing_submission.files = payload.files
+        existing_submission.submitted_at = datetime.utcnow()
+
+        db.commit()
+        db.refresh(existing_submission)
+        return existing_submission
+
+    submission = Submission(
+        hackathon_id=team.hackathon_id,
+        team_id=team.id,
+        description=payload.description,
+        repository_url=payload.repository_url,
+        files=payload.files,
+    )
+
+    db.add(submission)
+    db.commit()
+    db.refresh(submission)
+
+    return submission
+
+@router.get(
+    "/{team_id}/submission",
+    response_model=SubmissionRead,
+)
+def get_submission(
+    team_id: int,
+    db: DbSession,
+):
+    submission = db.scalar(
+        select(Submission).where(Submission.team_id == team_id)
+    )
+
+    if submission is None:
+        raise HTTPException(404, "Submission not found")
+
+    return submission

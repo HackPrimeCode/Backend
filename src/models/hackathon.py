@@ -36,7 +36,6 @@ class Hackathon(Base):
     max_team_size: Mapped[int] = mapped_column(default=4)
     max_participants: Mapped[int] = mapped_column(default=None)
     topics: Mapped[list[str] | None] = mapped_column(JSONB, default=list)
-    submission_requirements: Mapped[list | None] = mapped_column(JSONB, default=list)
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     tz_file_url: Mapped[str | None] = mapped_column(default=None)
