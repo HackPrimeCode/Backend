@@ -250,14 +250,11 @@ def update_hackathon(
 
     update_data = payload.model_dump(exclude_unset=True)
 
-    # Обрабатываем призы отдельно
     prizes = update_data.pop("prizes", None)
 
-    # Обновляем обычные поля
     for field, value in update_data.items():
         setattr(hackathon, field, value)
 
-    # Обновляем призы
     if prizes is not None:
         hackathon.prizes.clear()
 

@@ -53,13 +53,24 @@ def list_hackathons(db: DbSession):
     results = db.execute(stmt).all()
 
     return [
-        HackathonPublicRead(
-            **h.__dict__,
-            current_participants=p_count,
-            current_teams=t_count,
-        )
-        for h, p_count, t_count in results
-    ]
+    HackathonPublicRead(
+        id=h.id,
+        title=h.title,
+        description=h.description,
+        status=h.status,
+        place=h.place,
+        prizes=h.prizes,
+        topics=h.topics,
+        min_team_size=h.min_team_size,
+        max_team_size=h.max_team_size,
+        max_participants=h.max_participants,
+        current_participants=p_count,
+        current_teams=t_count,
+        start_date=h.start_date,
+        end_date=h.end_date,
+    )
+    for h, p_count, t_count in results
+]
 
 
 @router.get("/{hackathon_id}", response_model=HackathonRead)
