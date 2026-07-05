@@ -159,8 +159,8 @@ def get_hackathon_with_task(
         min_team_size=hackathon.min_team_size,
         max_team_size=hackathon.max_team_size,
         max_participants=hackathon.max_participants,
-        total_participants=participants_count,
-        total_teams=teams_count,
+        current_participants=participants_count,
+        current_teams=teams_count,
         start_date=hackathon.start_date,
         end_date=hackathon.end_date,
 
