@@ -234,6 +234,45 @@ def update_hackathon_status(
     db.refresh(hackathon)
     return hackathon
 
+@router.patch("/{hackathon_id}", response_model=HackathonRead)
+def update_hackathon(
+    hackathon_id: int,
+    payload: HackathonUpdate,
+    db: DbSession,
+    _: AdminOrOrganizator,
+) -> Hackathon:
+    hackathon = db.get(Hackathon, hackathon_id)
+    if hackathon is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Hackathon not found",
+        )
+
+    update_data = payload.model_dump(exclude_unset=True)
+
+    # Обрабатываем призы отдельно
+    prizes = update_data.pop("prizes", None)
+
+    # Обновляем обычные поля
+    for field, value in update_data.items():
+        setattr(hackathon, field, value)
+
+    # Обновляем призы
+    if prizes is not None:
+        hackathon.prizes.clear()
+
+        for prize_data in prizes:
+            hackathon.prizes.append(
+                HackathonPrize(
+                    title=prize_data["title"],
+                    reward=prize_data["reward"],
+                )
+            )
+
+    db.commit()
+    db.refresh(hackathon)
+    return hackathon
+
 @router.post(
     "/{hackathon_id}/invite-judges",
     response_model=InviteJudgesResponse,
