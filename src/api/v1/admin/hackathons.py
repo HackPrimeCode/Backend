@@ -94,7 +94,7 @@ def create_hackathon(
         place = place,
         start_date=_parse_optional_datetime(start_date),
         end_date=_parse_optional_datetime(end_date),
-        status=HackathonStatus.DRAFT,
+        status=HackathonStatus.REGISTRATION,
     )
 
 
