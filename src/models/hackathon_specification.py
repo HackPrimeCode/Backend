@@ -31,6 +31,10 @@ class HackathonSpecification(Base):
         JSONB, default=list
     )
 
+    submission_requirements: Mapped[list | None] = mapped_column(
+        JSONB, default=list
+    )
+
     files: Mapped[list[str] | None] = mapped_column(
         JSONB, default=list
     )

@@ -28,7 +28,6 @@ class HackathonCreate(BaseModel):
     prizes: list[PrizeCreate] = Field(default_factory=list)
     topics: list[Any] = Field(default_factory=list)
     max_participants: int | None = None
-    submission_requirements: list[Any] = Field(default_factory=list)
 
 
 class HackathonUpdate(BaseModel):
@@ -38,7 +37,6 @@ class HackathonUpdate(BaseModel):
     end_date: datetime | None = None
     topics: list[Any] | None = None
     prizes: list[PrizeCreate] | None = None
-    submission_requirements: list[Any] | None = None
 
 
 class HackathonStatusUpdate(BaseModel):
@@ -60,7 +58,6 @@ class HackathonRead(BaseModel):
     min_team_size: int | None = None
     max_team_size: int | None = None
     max_participants: int | None = None
-    submission_requirements: list[Any] | None = None
     start_date: datetime | None = None
     end_date: datetime | None = None
     tz_file_url: str | None = None
@@ -84,7 +81,7 @@ class HackathonPublicRead(BaseModel):
     start_date: datetime | None = None
     end_date: datetime | None = None
     tz_file_url: str | None = None
-    submission_requirements: list[Any] | None = None
+
 
 class HackathonSpecificationCreate(BaseModel):
     task: str
@@ -92,6 +89,7 @@ class HackathonSpecificationCreate(BaseModel):
     functional_requirements: list[str] | None = []
     technical_limitations: list[str] | None = []
     evaluation_criteria: list[str] | None = []
+    submission_requirements: list[Any] | None = None
     files: list[str] | None = []
 
 class HackathonSpecificationRead(BaseModel):
@@ -100,6 +98,7 @@ class HackathonSpecificationRead(BaseModel):
     functional_requirements: list[str] | None
     technical_limitations: list[str] | None
     evaluation_criteria: list[str] | None
+    submission_requirements: list[Any] | None = None
     files: list[str] | None
 
     model_config = {"from_attributes": True}
@@ -110,6 +109,7 @@ class HackathonPublicReadWithTask(HackathonPublicRead):
     functional_requirements: list[str] | None
     technical_limitations: list[str] | None
     evaluation_criteria: list[str] | None
+    submission_requirements: list[Any] | None = None
     files: list[str] | None
 
 class HackathonAdminListItem(BaseModel):

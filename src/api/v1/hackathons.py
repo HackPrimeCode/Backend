@@ -152,12 +152,12 @@ def get_hackathon_with_task(
         total_teams=teams_count,
         start_date=hackathon.start_date,
         end_date=hackathon.end_date,
-        submission_requirements=hackathon.submission_requirements,
 
         task=spec.task if spec else None,
         task_description=spec.task_description if spec else None,
         functional_requirements=spec.functional_requirements if spec else None,
         technical_limitations=spec.technical_limitations if spec else None,
         evaluation_criteria=spec.evaluation_criteria if spec else None,
+        submission_requirements=spec.submission_requirements if spec else None,
         files=spec.files if spec else None,
     )

@@ -79,7 +79,6 @@ def create_hackathon(
     max_participants: Annotated[int, Form()] = None,
     start_date: Annotated[str | None, Form()] = None,
     end_date: Annotated[str | None, Form()] = None,
-    submission_requirements: Annotated[str | None, Form()] = None,
     tz_file: Annotated[UploadFile | None, File()] = None,
 ) -> Hackathon:
 
@@ -95,7 +94,6 @@ def create_hackathon(
         place = place,
         start_date=_parse_optional_datetime(start_date),
         end_date=_parse_optional_datetime(end_date),
-        submission_requirements=_parse_json_list(submission_requirements, "submission_requirements"),
         status=HackathonStatus.DRAFT,
     )
 
@@ -215,7 +213,6 @@ def get_admin_hackathon_detail(
         start_date=hackathon.start_date,
         end_date=hackathon.end_date,
         topics=hackathon.topics,
-        submission_requirements=hackathon.submission_requirements,
         prizes=hackathon.prizes,
         specification=spec,
         teams=teams_data,

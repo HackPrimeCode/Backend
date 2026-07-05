@@ -7,6 +7,7 @@ from src.models.user import User
 from src.models.prizes import HackathonPrize
 from src.models.hackathon_specification import HackathonSpecification
 from src.models.submission import Submission
+from src.models.judge_score import JudgeScore
 
 __all__ = [
     "User",
@@ -17,5 +18,6 @@ __all__ = [
     "InviteToken",
     "HackathonPrize",
     "HackathonSpecification",
-    "Submission"
+    "Submission",
+    "JudgeScore"
 ]
