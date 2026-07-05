@@ -19,7 +19,7 @@ def list_users(
     return db.scalars(stmt).all()
 
 @router.patch(
-    "/admin/users/{user_id}/role",
+    "/{user_id}/role",
     response_model=AdminUserRead,
 )
 def update_user_role(
